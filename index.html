@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lesson Plan Generator</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #173b6c, #2a5ca8);
+      color: #333;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Header with Logo Only (Left-Aligned) */
+    header {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      padding: 12px 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-radius: 14px 14px 0 0;
+      border-bottom: 3px solid #0d264d;
+    }
+
+    .form-section {
+      padding: 25px;
+      position: relative;
+    }
+
+    .compact-row, .wide-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .compact-group { flex: 1 1 120px; }
+    .wide-group { flex: 1 1 48%; }
+    .full-group { flex: 1 1 100%; }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #1a3c6e;
+      font-size: 10pt;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 10pt;
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    .compact-group input, .compact-group select { height: 32px; font-size: 10pt; }
+    .wide-group textarea, .full-group textarea { min-height: 50px; font-size: 10pt; }
+    .full-group textarea { min-height: 80px; font-size: 10pt; }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: #1a3c6e;
+      outline: none;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin: 25px 0 15px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 10pt;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #generateBtn { background-color: #0056b3; color: white; }
+    #printBtn { background-color: #007bff; color: white; }
+    #saveBtn { background-color: #28a745; color: white; }
+    #loadBtn { background-color: #fd7e14; color: white; }
+    #clearBtn { background-color: #dc3545; color: white; }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    /* LOADING INDICATOR - Bottom Right */
+    #loader {
+      position: absolute;
+      bottom: 20px;
+      right: 30px;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+      z-index: 100;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #lessonPlanOutput {
+      display: none;
+      padding: 0;
+    }
+
+    /* PRINT-OPTIMIZED A4 LAYOUT */
+    @media print {
+      body {
+        background: white;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .container {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+
+      #lessonPlanOutput {
+        display: block !important;
+        width: 100%;
+        height: 100%;
+      }
+
+      table.lesson-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 10pt;
+        table-layout: fixed;
+        margin: 0;
+        border: 1.5pt solid black;
+      }
+
+      .lesson-table th, .lesson-table td {
+        border: 1.5pt solid black;
+        padding: 6pt;
+        line-height: 1.4;
+        vertical-align: top;
+        word-wrap: break-word;
+      }
+
+      .lesson-table th {
+        background-color: #e6f0ff !important;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .lesson-table .main { width: 60%; }
+      .lesson-table .reflection { width: 20%; }
+
+      .content {
+        min-height: 90px;
+        line-height: 1.5;
+      }
+
+      /* === HIDE LOGO & FORM WHEN PRINTING === */
+      .no-print {
+        display: none !important;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 0.75in 0.7in 0.75in 0.7in;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header with Logo (Hidden on Print) -->
+  <header id="appHeader" class="no-print">
+    <img src="static/logo.png" alt="App Logo" style="
+      height: 60px;
+      width: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: transform 0.3s ease;
+    " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+  </header>
+
+  <div class="form-section no-print">
+    <!-- Top Inputs -->
+    <div class="compact-row">
+      <div class="compact-group">
+        <label>Class (e.g., B7)</label>
+        <input type="text" id="class" placeholder="B7" />
+      </div>
+      <div class="compact-group">
+        <label>Subject</label>
+        <input type="text" id="subject" />
+      </div>
+      <div class="compact-group">
+        <label>Week Number</label>
+        <select id="weekNum" required>
+          <option value="">Select Week</option>
+          <option value="1">Week 1</option>
+          <option value="2">Week 2</option>
+          <option value="3">Week 3</option>
+          <option value="4">Week 4</option>
+          <option value="5">Week 5</option>
+          <option value="6">Week 6</option>
+          <option value="7">Week 7</option>
+          <option value="8">Week 8</option>
+          <option value="9">Week 9</option>
+          <option value="10">Week 10</option>
+          <option value="11">Week 11</option>
+          <option value="12">Week 12</option>
+          <option value="13">Week 13</option>
+          <option value="14">Week 14</option>
+          <option value="15">Week 15</option>
+          <option value="16">Week 16</option>
+          <option value="17">Week 17</option>
+          <option value="18">Week 18</option>
+          <option value="19">Week 19</option>
+          <option value="20">Week 20</option>
+        </select>
+      </div>
+      <div class="compact-group">
+        <label>Date</label>
+        <input type="text" id="date" placeholder="12/04" />
+      </div>
+      <div class="compact-group">
+        <label>Day</label>
+        <input type="text" id="day" placeholder="Monday" />
+      </div>
+    </div>
+
+    <div class="compact-row">
+      <div class="compact-group">
+        <label>Lesson</label>
+        <input type="text" id="lessonTitle" />
+      </div>
+      <div class="compact-group">
+        <label>Period</label>
+        <input type="text" id="period" />
+      </div>
+      <div class="compact-group">
+        <label>Class Size</label>
+        <input type="number" id="classSize" />
+      </div>
+      <div class="compact-group">
+        <label>Duration</label>
+        <input type="text" id="duration" value="40 mins" />
+      </div>
+    </div>
+
+    <!-- Wide Fields -->
+    <div class="wide-row">
+      <div class="wide-group">
+        <label>Strand</label>
+        <textarea id="strand" rows="2"></textarea>
+      </div>
+      <div class="wide-group">
+        <label>Sub-strand</label>
+        <textarea id="subStrand" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="wide-group">
+        <label>Content Standard</label>
+        <textarea id="contentStandard" rows="2"></textarea>
+      </div>
+      <div class="wide-group">
+        <label>Indicator</label>
+        <input type="text" id="indicator" />
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="full-group">
+        <label>Performance Indicator</label>
+        <textarea id="performanceIndicator" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="full-group">
+        <label>Core Competencies</label>
+        <textarea id="coreCompetencies" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="full-group">
+        <label>Keywords</label>
+        <textarea id="keywords" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="full-group">
+        <label>Exemplars</label>
+        <textarea id="exemplars" rows="4" placeholder="1. Explain electronic spreadsheet to the learners.
+2. Guide learners to identify 2 examples of electronic spreadsheet.
+3. Explain the steps involved in launching MS Excel.
+4. Discuss 2 importance of MS Excel with the learners."></textarea>
+      </div>
+    </div>
+
+    <div class="wide-row">
+      <div class="wide-group">
+        <label>T/L Resources</label>
+        <textarea id="tlrs" rows="2" placeholder="Computer with MS Excel, Projector"></textarea>
+      </div>
+      <div class="wide-group">
+        <label>References</label>
+        <textarea id="references" rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- District/Municipal/Metropolitan Field -->
+    <div class="wide-row">
+      <div class="full-group">
+        <label>District / Municipal / Metropolitan</label>
+        <select id="district" required>
+          <option value="" disabled selected>Select your district</option>
+          <!-- AHAFO -->
+          <optgroup label="Ahafo Region">
+            <option value="Asutifi North Municipal">Asutifi North Municipal</option>
+            <option value="Asutifi South District">Asutifi South District</option>
+            <option value="Asunafo North Municipal">Asunafo North Municipal</option>
+            <option value="Asunafo South District">Asunafo South District</option>
+            <option value="Tano North Municipal">Tano North Municipal</option>
+            <option value="Tano South Municipal">Tano South Municipal</option>
+          </optgroup>
+          <!-- ASHANTI -->
+          <optgroup label="Ashanti Region">
+            <option value="Adansi Asokwa District">Adansi Asokwa District</option>
+            <option value="Adansi North District">Adansi North District</option>
+            <option value="Adansi South District">Adansi South District</option>
+            <option value="Afigya Kwabre North District">Afigya Kwabre North District</option>
+            <option value="Afigya Kwabre South District">Afigya Kwabre South District</option>
+            <option value="Akrofuom District">Akrofuom District</option>
+            <option value="Amansie Central District">Amansie Central District</option>
+            <option value="Amansie South District">Amansie South District</option>
+            <option value="Amansie West District">Amansie West District</option>
+            <option value="Asante Akim Central Municipal">Asante Akim Central Municipal</option>
+            <option value="Asante Akim North Municipal">Asante Akim North Municipal</option>
+            <option value="Asante Akim South Municipal">Asante Akim South Municipal</option>
+            <option value="Asokore Mampong Municipal">Asokore Mampong Municipal</option>
+            <option value="Asokwa Municipal">Asokwa Municipal</option>
+            <option value="Atwima Kwanwoma District">Atwima Kwanwoma District</option>
+            <option value="Atwima Mponua District">Atwima Mponua District</option>
+            <option value="Atwima Nwabiagya Municipal">Atwima Nwabiagya Municipal</option>
+            <option value="Atwima Nwabiagya North District">Atwima Nwabiagya North District</option>
+            <option value="Bantama Municipal">Bantama Municipal</option>
+            <option value="Ejisu Municipal">Ejisu Municipal</option>
+            <option value="Ejura Sekyedumase Municipal">Ejura Sekyedumase Municipal</option>
+            <option value="Juaben Municipal">Juaben Municipal</option>
+            <option value="Kumasi Metropolitan">Kumasi Metropolitan</option>
+            <option value="Kwabre East Municipal">Kwabre East Municipal</option>
+            <option value="Mampong Municipal">Mampong Municipal</option>
+            <option value="Obuasi Municipal">Obuasi Municipal</option>
+            <option value="Obuasi East District">Obuasi East District</option>
+            <option value="Offinso Municipal">Offinso Municipal</option>
+            <option value="Offinso North District">Offinso North District</option>
+            <option value="Oforikrom Municipal">Oforikrom Municipal</option>
+            <option value="Old Tafo Municipal">Old Tafo Municipal</option>
+            <option value="Sekyere Central District">Sekyere Central District</option>
+            <option value="Sekyere East District">Sekyere East District</option>
+            <option value="Sekyere Kumawu District">Sekyere Kumawu District</option>
+            <option value="Sekyere South District">Sekyere South District</option>
+            <option value="Suame Municipal">Suame Municipal</option>
+          </optgroup>
+          <!-- BONO -->
+          <optgroup label="Bono Region">
+            <option value="Berekum Municipal">Berekum Municipal</option>
+            <option value="Berekum West District">Berekum West District</option>
+            <option value="Dormaa Central Municipal">Dormaa Central Municipal</option>
+            <option value="Dormaa East District">Dormaa East District</option>
+            <option value="Dormaa West District">Dormaa West District</option>
+            <option value="Jaman North District">Jaman North District</option>
+            <option value="Jaman South Municipal">Jaman South Municipal</option>
+            <option value="Sunyani Municipal">Sunyani Municipal</option>
+            <option value="Sunyani West District">Sunyani West District</option>
+          </optgroup>
+          <!-- BONO EAST -->
+          <optgroup label="Bono East Region">
+            <option value="Atebubu-Amantin Municipal">Atebubu-Amantin Municipal</option>
+            <option value="Kintampo North Municipal">Kintampo North Municipal</option>
+            <option value="Kintampo South District">Kintampo South District</option>
+            <option value="Nkoranza North District">Nkoranza North District</option>
+            <option value="Nkoranza South Municipal">Nkoranza South Municipal</option>
+            <option value="Pru East District">Pru East District</option>
+            <option value="Pru West District">Pru West District</option>
+            <option value="Sene East District">Sene East District</option>
+            <option value="Sene West District">Sene West District</option>
+            <option value="Techiman Municipal">Techiman Municipal</option>
+            <option value="Techiman North District">Techiman North District</option>
+          </optgroup>
+          <!-- CENTRAL -->
+          <optgroup label="Central Region">
+            <option value="Abura/Asebu/Kwamankese District">Abura/Asebu/Kwamankese District</option>
+            <option value="Agona East District">Agona East District</option>
+            <option value="Agona West Municipal">Agona West Municipal</option>
+            <option value="Ajumako Enyan Esiam District">Ajumako Enyan Esiam District</option>
+            <option value="Asikuma Odoben Brakwa District">Asikuma Odoben Brakwa District</option>
+            <option value="Assin Central Municipal">Assin Central Municipal</option>
+            <option value="Assin North District">Assin North District</option>
+            <option value="Awutu Senya District">Awutu Senya District</option>
+            <option value="Awutu Senya East Municipal">Awutu Senya East Municipal</option>
+            <option value="Ekumfi District">Ekumfi District</option>
+            <option value="Gomoa East District">Gomoa East District</option>
+            <option value="Gomoa West District">Gomoa West District</option>
+            <option value="Mfantsiman Municipal">Mfantsiman Municipal</option>
+            <option value="Twifo Hemang Lower Denkyira District">Twifo Hemang Lower Denkyira District</option>
+            <option value="Upper Denkyira East Municipal">Upper Denkyira East Municipal</option>
+            <option value="Upper Denkyira West District">Upper Denkyira West District</option>
+            <option value="Cape Coast Metropolitan">Cape Coast Metropolitan</option>
+            <option value="Effutu Municipal">Effutu Municipal</option>
+            <option value="Komenda Edina Eguafo Abirem Municipal">Komenda Edina Eguafo Abirem Municipal</option>
+          </optgroup>
+          <!-- EASTERN -->
+          <optgroup label="Eastern Region">
+            <option value="Akuapim North Municipal">Akuapim North Municipal</option>
+            <option value="Akuapim South District">Akuapim South District</option>
+            <option value="Akuapim Central District">Akuapim Central District</option>
+            <option value="Akyemansa District">Akyemansa District</option>
+            <option value="Asene Manso Akropong District">Asene Manso Akropong District</option>
+            <option value="Atiwa East District">Atiwa East District</option>
+            <option value="Atiwa West District">Atiwa West District</option>
+            <option value="Ayensuano District">Ayensuano District</option>
+            <option value="Fanteakwa North District">Fanteakwa North District</option>
+            <option value="Fanteakwa South District">Fanteakwa South District</option>
+            <option value="Kwaebibirem Municipal">Kwaebibirem Municipal</option>
+            <option value="Kwahu Afram Plains North District">Kwahu Afram Plains North District</option>
+            <option value="Kwahu Afram Plains South District">Kwahu Afram Plains South District</option>
+            <option value="Kwahu East District">Kwahu East District</option>
+            <option value="Kwahu South District">Kwahu South District</option>
+            <option value="Kwahu West Municipal">Kwahu West Municipal</option>
+            <option value="Lower Manya Krobo Municipal">Lower Manya Krobo Municipal</option>
+            <option value="New Juaben North District">New Juaben North District</option>
+            <option value="New Juaben South Municipal">New Juaben South Municipal</option>
+            <option value="Nsawam Adoagyiri Municipal">Nsawam Adoagyiri Municipal</option>
+            <option value="Suhum Municipal">Suhum Municipal</option>
+            <option value="Upper Manya Krobo Municipal">Upper Manya Krobo Municipal</option>
+            <option value="West Akim Municipal">West Akim Municipal</option>
+            <option value="East Akim Municipal">East Akim Municipal</option>
+            <option value="Yilo Krobo Municipal">Yilo Krobo Municipal</option>
+          </optgroup>
+          <!-- GREATER ACCRA -->
+          <optgroup label="Greater Accra Region">
+            <option value="Accra Metropolitan">Accra Metropolitan</option>
+            <option value="Adentan Municipal">Adentan Municipal</option>
+            <option value="Ashaiman Municipal">Ashaiman Municipal</option>
+            <option value="Ablekuma North Municipal">Ablekuma North Municipal</option>
+            <option value="Ablekuma South Municipal">Ablekuma South Municipal</option>
+            <option value="Ayawaso Central Municipal">Ayawaso Central Municipal</option>
+            <option value="Ayawaso East Municipal">Ayawaso East Municipal</option>
+            <option value="Ayawaso West Municipal">Ayawaso West Municipal</option>
+            <option value="Ga Central Municipal">Ga Central Municipal</option>
+            <option value="Ga South Municipal">Ga South Municipal</option>
+            <option value="Ga East Municipal">Ga East Municipal</option>
+            <option value="Ga West Municipal">Ga West Municipal</option>
+            <option value="Korle-Klottey Municipal">Korle-Klottey Municipal</option>
+            <option value="Kwashieman Municipal">Kwashieman Municipal</option>
+            <option value="Okaikwei North Municipal">Okaikwei North Municipal</option>
+            <option value="Tema Metropolitan">Tema Metropolitan</option>
+            <option value="Tema West Municipal">Tema West Municipal</option>
+            <option value="Ledzokuku Municipal">Ledzokuku Municipal</option>
+            <option value="La Dadekotopon Municipal">La Dadekotopon Municipal</option>
+            <option value="La Nkwantanang Madina Municipal">La Nkwantanang Madina Municipal</option>
+            <option value="Shai Osudoku District">Shai Osudoku District</option>
+            <option value="Ningo Prampram District">Ningo Prampram District</option>
+            <option value="Kpone Katamanso District">Kpone Katamanso District</option>
+            <option value="Weija Gbawe Municipal">Weija Gbawe Municipal</option>
+            <option value="Abokobi-Madina District">Abokobi-Madina District</option>
+          </optgroup>
+          <!-- NORTHERN -->
+          <optgroup label="Northern Region">
+            <option value="Bole District">Bole District</option>
+            <option value="Central Gonja District">Central Gonja District</option>
+            <option value="Chereponi District">Chereponi District</option>
+            <option value="East Gonja Municipal">East Gonja Municipal</option>
+            <option value="Gushegu Municipal">Gushegu Municipal</option>
+            <option value="Karaga District">Karaga District</option>
+            <option value="Kpandai District">Kpandai District</option>
+            <option value="Mion District">Mion District</option>
+            <option value="Nanumba North Municipal">Nanumba North Municipal</option>
+            <option value="Nanumba South District">Nanumba South District</option>
+            <option value="Saboba District">Saboba District</option>
+            <option value="Savelugu Municipal">Savelugu Municipal</option>
+            <option value="Sawla Tuna Kalba District">Sawla Tuna Kalba District</option>
+            <option value="Tatale Sanguli District">Tatale Sanguli District</option>
+            <option value="Tolon District">Tolon District</option>
+            <option value="Zabzugu District">Zabzugu District</option>
+            <option value="Yendi Municipal">Yendi Municipal</option>
+            <option value="Sagnarigu Municipal">Sagnarigu Municipal</option>
+            <option value="Tamale Metropolitan">Tamale Metropolitan</option>
+          </optgroup>
+          <!-- NORTH EAST -->
+          <optgroup label="North East Region">
+            <option value="Bunkpurugu Nyankpanduri District">Bunkpurugu Nyankpanduri District</option>
+            <option value="Chereponi District">Chereponi District</option>
+            <option value="East Mamprusi Municipal">East Mamprusi Municipal</option>
+            <option value="Gambaga District">Gambaga District</option>
+            <option value="Mamprugu Moagduri District">Mamprugu Moagduri District</option>
+            <option value="West Mamprusi Municipal">West Mamprusi Municipal</option>
+          </optgroup>
+          <!-- OTI -->
+          <optgroup label="Oti Region">
+            <option value="Jasikan District">Jasikan District</option>
+            <option value="Kadjebi District">Kadjebi District</option>
+            <option value="Nkwanta North Municipal">Nkwanta North Municipal</option>
+            <option value="Nkwanta South Municipal">Nkwanta South Municipal</option>
+            <option value="Biakoye District">Biakoye District</option>
+            <option value="Guan District">Guan District</option>
+            <option value="Krachi East Municipal">Krachi East Municipal</option>
+            <option value="Krachi Nchumuru District">Krachi Nchumuru District</option>
+            <option value="Krachi West District">Krachi West District</option>
+          </optgroup>
+          <!-- SAVANNAH -->
+          <optgroup label="Savannah Region">
+            <option value="Bole District">Bole District</option>
+            <option value="Central Gonja District">Central Gonja District</option>
+            <option value="North Gonja District">North Gonja District</option>
+            <option value="Sawla Tuna Kalba District">Sawla Tuna Kalba District</option>
+            <option value="St. Martin's District">St. Martin's District</option>
+            <option value="East Gonja Municipal">East Gonja Municipal</option>
+          </optgroup>
+          <!-- UPPER EAST -->
+          <optgroup label="Upper East Region">
+            <option value="Bawku Municipal">Bawku Municipal</option>
+            <option value="Bawku West District">Bawku West District</option>
+            <option value="Bolgatanga East District">Bolgatanga East District</option>
+            <option value="Bolgatanga Municipal">Bolgatanga Municipal</option>
+            <option value="Builsa North District">Builsa North District</option>
+            <option value="Builsa South District">Builsa South District</option>
+            <option value="Garu District">Garu District</option>
+            <option value="Kassena Nankana East Municipal">Kassena Nankana East Municipal</option>
+            <option value="Kassena Nankana West District">Kassena Nankana West District</option>
+            <option value="Tempane District">Tempane District</option>
+            <option value="Zebilla District">Zebilla District</option>
+            <option value="Binduri District">Binduri District</option>
+            <option value="Nabdam District">Nabdam District</option>
+          </optgroup>
+          <!-- UPPER WEST -->
+          <optgroup label="Upper West Region">
+            <option value="Daffiama Bussie Issa District">Daffiama Bussie Issa District</option>
+            <option value="Jirapa Municipal">Jirapa Municipal</option>
+            <option value="Lambussie District">Lambussie District</option>
+            <option value="Lawra Municipal">Lawra Municipal</option>
+            <option value="Nandom Municipal">Nandom Municipal</option>
+            <option value="Sissala East Municipal">Sissala East Municipal</option>
+            <option value="Sissala West District">Sissala West District</option>
+            <option value="Wa East District">Wa East District</option>
+            <option value="Wa Municipal">Wa Municipal</option>
+            <option value="Wa West District">Wa West District</option>
+          </optgroup>
+          <!-- WESTERN -->
+          <optgroup label="Western Region">
+            <option value="Ahanta West Municipal">Ahanta West Municipal</option>
+            <option value="Ellembelle District">Ellembelle District</option>
+            <option value="Jomoro Municipal">Jomoro Municipal</option>
+            <option value="Mpohor District">Mpohor District</option>
+            <option value="Nzema East Municipal">Nzema East Municipal</option>
+            <option value="Prestea Huni Valley Municipal">Prestea Huni Valley Municipal</option>
+            <option value="Shama District">Shama District</option>
+            <option value="Tarkwa Nsuaem Municipal">Tarkwa Nsuaem Municipal</option>
+            <option value="Wassa Amenfi Central Municipal">Wassa Amenfi Central Municipal</option>
+            <option value="Wassa Amenfi East District">Wassa Amenfi East District</option>
+            <option value="Wassa Amenfi West District">Wassa Amenfi West District</option>
+            <option value="Wassa East District">Wassa East District</option>
+          </optgroup>
+          <!-- WESTERN NORTH -->
+          <optgroup label="Western North Region">
+            <option value="Bia East District">Bia East District</option>
+            <option value="Bia West District">Bia West District</option>
+            <option value="Bibiani Anhwiaso Bekwai Municipal">Bibiani Anhwiaso Bekwai Municipal</option>
+            <option value="Juaboso District">Juaboso District</option>
+            <option value="Sefwi Akontombra District">Sefwi Akontombra District</option>
+            <option value="Sefwi Wiawso Municipal">Sefwi Wiawso Municipal</option>
+            <option value="Suaman District">Suaman District</option>
+          </optgroup>
+          <!-- VOLTA -->
+          <optgroup label="Volta Region">
+            <option value="Ada East District">Ada East District</option>
+            <option value="Ada West District">Ada West District</option>
+            <option value="Afadzato South District">Afadzato South District</option>
+            <option value="Agotime Ziope District">Agotime Ziope District</option>
+            <option value="Akatsi North District">Akatsi North District</option>
+            <option value="Akatsi South District">Akatsi South District</option>
+            <option value="Central Tongu District">Central Tongu District</option>
+            <option value="Ho Municipal">Ho Municipal</option>
+            <option value="Hohoe Municipal">Hohoe Municipal</option>
+            <option value="Keta Municipal">Keta Municipal</option>
+            <option value="Ketu North District">Ketu North District</option>
+            <option value="Ketu South Municipal">Ketu South Municipal</option>
+            <option value="North Dayi District">North Dayi District</option>
+            <option value="North Tongu District">North Tongu District</option>
+            <option value="South Dayi District">South Dayi District</option>
+            <option value="South Tongu District">South Tongu District</option>
+            <option value="Kpando Municipal">Kpando Municipal</option>
+            <option value="Anfoega District">Anfoega District</option>
+            <option value="Biakoye District">Biakoye District</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="button-group">
+      <button id="generateBtn" onclick="handleAction(generateLessonPlan)">Generate Plan</button>
+      <button id="printBtn" onclick="handleAction(printPlan)">Print Plan</button>
+      <button id="saveBtn" onclick="handleAction(savePlan)">Save Plan</button>
+      <button id="loadBtn" onclick="handleAction(loadLastPlan)">Load Last Plan</button>
+      <button id="clearBtn" onclick="handleAction(clearForm)">Clear Form</button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loader"></div>
+  </div>
+
+  <!-- GENERATED LESSON PLAN -->
+  <div id="lessonPlanOutput">
+    <table class="lesson-table">
+      <!-- Header: Selected District replaces app title only in output -->
+      <tr>
+        <th colspan="10" style="font-size:14pt;">
+          <strong><span id="outputDistrictHeader">WEEKLY LESSON PLAN</span></strong>
+        </th>
+      </tr>
+      <tr>
+        <th colspan="10"><span id="outputClass"></span></th>
+      </tr>
+      <tr>
+        <th colspan="10">WEEK <span id="outputWeekNum"></span></th>
+      </tr>
+      <tr>
+        <td colspan="2"><strong>Class size:</strong> <span id="outputClassSize"></span></td>
+        <td colspan="2"><strong>Duration:</strong> <span id="outputDuration"></span></td>
+        <td colspan="3"><strong>TLRs:</strong> <span id="outputTlrs"></span></td>
+        <td colspan="3"><strong>Date:</strong> <span id="outputDate"></span></td>
+      </tr>
+      <tr>
+        <td colspan="2"><strong>Lesson:</strong> <span id="outputLessonTitle"></span></td>
+        <td colspan="2"><strong>Day:</strong> <span id="outputDay"></span></td>
+        <td colspan="6"><strong>Reference:</strong> <span id="outputReferences"></span></td>
+      </tr>
+      <tr>
+        <td colspan="3"><strong>Strand:</strong> <span id="outputStrand"></span></td>
+        <td colspan="7"><strong>Sub-strand:</strong> <span id="outputSubStrand"></span></td>
+      </tr>
+      <tr>
+        <td colspan="3"><strong>Content standard:</strong> <span id="outputContentStandard"></span></td>
+        <td colspan="7"><strong>Indicator:</strong> <span id="outputIndicator"></span></td>
+      </tr>
+      <tr>
+        <td colspan="10"><strong>Performance Indicator:</strong> <span id="outputPerformanceIndicator"></span></td>
+      </tr>
+      <tr>
+        <td colspan="10"><strong>Core Competencies:</strong> <span id="outputCoreCompetencies"></span></td>
+      </tr>
+      <tr>
+        <th class="day-header">DAY</th>
+        <th class="starter">PHASE 1/<br>STARTER</th>
+        <th colspan="7" class="main">PHASE 2 / MAIN</th>
+        <th colspan="2" class="reflection">PHASE 3 / REFLECTION</th>
+      </tr>
+      <tr>
+        <td><span id="outputDay"></span></td>
+        <td class="content"><div id="outputStarter"></div></td>
+        <td colspan="7" class="content"><div id="outputMainActivities"></div></td>
+        <td colspan="2" class="content"><div id="outputReflection"></div></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="no-print">
+  <p style="color: #666; font-size: 9pt; text-align: center; margin: 20px 0;">
+    © 2025 | Empowering Ghanaian Educators
+  </p>
+</div>
+
+<script>
+  const loader = document.getElementById('loader');
+  const appHeader = document.getElementById('appHeader');
+
+  function showLoader() { loader.style.display = 'block'; }
+  function hideLoader() { loader.style.display = 'none'; }
+
+  function handleAction(actionFn) {
+    showLoader();
+    setTimeout(() => {
+      try { actionFn(); }
+      catch (e) { console.error(e); }
+      finally { setTimeout(hideLoader, 300); }
+    }, 100);
+  }
+
+  // 🚀 Generate Phase 1 (Starter) based on Keywords
+  function generateStarter(keywords) {
+    if (!keywords || keywords.trim() === '') {
+      return "Discuss the meanings of keywords and terminologies in the lesson.";
+    }
+
+    const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k !== '');
+    let starter = "Discuss the meanings of keywords and terminologies in the lesson.<br><br><strong>Keywords:</strong><ul>";
+
+    keywordList.forEach(k => {
+      starter += `<li>${k}</li>`;
+    });
+
+    starter += "</ul>";
+    return starter;
+  }
+
+  // ✅ Send prompt to YOUR Flask backend
+  async function getAiContent(prompt) {
+    try {
+    const response = await fetch("https://lesson-plan-backend.onrender.com/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: prompt })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend Error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.content;
+    } catch (e) {
+      console.error("AI Request Failed:", e);
+      throw new Error("Could not reach your backend. Make sure 'python app.py' is running.");
+    }
+  }
+
+  // 🚀 Generate Lesson Plan using AI
+  async function generateLessonPlan() {
+    const v = id => document.getElementById(id).value;
+
+    const weekNum = v('weekNum');
+    if (!weekNum) {
+      alert("Please select a week number.");
+      return;
+    }
+
+    // ✅ Format Class as "BASIC 7"
+    const rawClass = v('class') || 'B7';
+    const classNum = rawClass.match(/\d+/);
+    const basicClass = classNum ? `BASIC ${classNum[0]}` : 'BASIC 7';
+
+    // Fill all output fields
+    document.getElementById('outputClass').textContent = basicClass;
+    document.getElementById('outputWeekNum').textContent = weekNum;
+    document.getElementById('outputClassSize').textContent = v('classSize');
+    document.getElementById('outputDuration').textContent = v('duration');
+    document.getElementById('outputLessonTitle').textContent = v('lessonTitle');
+    document.getElementById('outputDate').textContent = v('date');
+    document.getElementById('outputReferences').textContent = v('references');
+    document.getElementById('outputStrand').textContent = v('strand');
+    document.getElementById('outputSubStrand').textContent = v('subStrand');
+    document.getElementById('outputContentStandard').textContent = v('contentStandard');
+    document.getElementById('outputIndicator').textContent = v('indicator');
+    document.getElementById('outputPerformanceIndicator').textContent = v('performanceIndicator');
+    document.getElementById('outputCoreCompetencies').textContent = v('coreCompetencies');
+    document.getElementById('outputDay').textContent = v('day');
+    document.getElementById('outputTlrs').textContent = v('tlrs');
+
+    // ✅ Replace header with selected district only (in output)
+    const district = v('district') || "WEEKLY LESSON PLAN";
+    document.getElementById('outputDistrictHeader').textContent = district;
+
+    // ✅ Phase 1: Starter
+    const starterText = generateStarter(v('keywords'));
+    document.getElementById('outputStarter').innerHTML = starterText;
+
+    // ✅ Build AI Prompt with Subject, Class, Exemplars, TLRs
+    const subject = v('subject') || "Science";
+    const exemplars = v('exemplars');
+    const tlrs = v('tlrs');
+
+    const prompt = `
+You are an expert Ghanaian lesson planner for ${subject}, Class ${basicClass}.
+The teacher has provided:
+T/L Resources: ${tlrs}
+Exemplars:
+${exemplars}
+
+Generate the following:
+
+PHASE 1: STARTER
+- Briefly introduce keywords using real-life examples.
+- Engage learners in brainstorming.
+
+PHASE 2: MAIN
+- Create exactly one Teacher-Learner Activity per exemplar.
+  * Start each with: "Using the TLR, [activity]"
+  * Use the T/L Resources naturally.
+  * Make the language appropriate for ${basicClass} learners.
+- After the activities, provide Explanatory Notes:
+  * A bold and underlined heading for each key concept.
+  * A clear, detailed explanation of the concept.
+  * Include real-life examples relevant to Ghanaian ${basicClass} students.
+  * Base it on the subject: ${subject}
+
+PHASE 3: REFLECTION
+- Generate exactly as many assessment questions as there are exemplars.
+- Each question must assess understanding from the activities and notes.
+- Must be professional, grammatically correct, and suitable for written assessment.
+- Must be numbered and formatted for printing.
+
+Format your response EXACTLY as:
+
+PHASE 1: STARTER
+Teacher introduces keywords (Producer, Consumer, etc.) using real-life examples.
+Learners brainstorm what they already know.
+
+PHASE 2: MAIN
+Using the TLR, guide learners to discuss the types of ecosystems.
+Using the TLR, show the food web chart and ask learners to identify producers and consumers.
+
+ECOSYSTEM
+An ecosystem is made up of living (biotic) and non-living (abiotic) components that interact in an environment. Examples include forest, aquatic, and desert ecosystems.
+
+FOOD CHAIN
+A food chain shows how energy is transferred from one organism to another. It starts with a producer (like grass), then a primary consumer (like a grasshopper), then a secondary consumer (like a frog).
+
+PHASE 3: REFLECTION
+1. Define an ecosystem.
+2. List two types of ecosystems.
+3. Draw and explain one simple food chain.
+`;
+
+    // ✅ Show loader and call backend
+    showLoader();
+    try {
+      const aiResponse = await getAiContent(prompt);
+
+      // Split response by phase
+      const phase1Match = aiResponse.match(/PHASE 1: STARTER([\s\S]*?)(?=PHASE 2: MAIN)/i);
+      const phase2Match = aiResponse.match(/PHASE 2: MAIN([\s\S]*?)(?=PHASE 3: REFLECTION)/i);
+      const phase3Match = aiResponse.match(/PHASE 3: REFLECTION([\s\S]*)/i);
+
+      // Phase 1: Starter
+      const phase1Text = phase1Match ? phase1Match[1].trim() : starterText;
+      document.getElementById('outputStarter').innerHTML = phase1Text.replace(/\n/g, '<br>');
+
+      // Phase 2: Main Activities + Notes
+      let mainHTML = "";
+      if (phase2Match) {
+        const lines = phase2Match[1].trim().split('\n').map(line => line.trim()).filter(line => line);
+        let inNotes = false;
+        let currentHeading = "";
+
+        lines.forEach(line => {
+          if (line.match(/^Using the TLR,/i)) {
+            mainHTML += line + "<br>";
+          } else if (line === line.toUpperCase() && line.length > 2 && !line.includes("PHASE")) {
+            currentHeading = line;
+            inNotes = true;
+            mainHTML += `<br><u><strong>${currentHeading}</strong></u><br>`;
+          } else if (inNotes && currentHeading) {
+            mainHTML += line + "<br>";
+          }
+        });
+      }
+      document.getElementById('outputMainActivities').innerHTML = mainHTML;
+
+      // Phase 3: Assessment
+      let assessmentHTML = "Through questions and answers, conclude the lesson.<br><br><strong>Assessment;</strong><br>";
+      if (phase3Match) {
+        const questions = phase3Match[1].trim().split('\n')
+          .filter(q => q.trim())
+          .map(q => q.replace(/^[0-9]+\.\s*/, '').trim())
+          .map((q, i) => `${i+1}. ${q}<br>`)
+          .join('');
+        assessmentHTML += questions;
+      } else {
+        assessmentHTML += "1. What did you learn today?<br>2. How can you apply this?<br>3. Any questions?";
+      }
+      document.getElementById('outputReflection').innerHTML = assessmentHTML;
+
+    } catch (e) {
+      alert(e.message);
+      console.error(e);
+    } finally {
+      hideLoader();
+      document.getElementById('lessonPlanOutput').style.display = 'block';
+    }
+  }
+
+  // 🖨️ Print Plan
+  function printPlan() {
+    if (document.getElementById('lessonPlanOutput').style.display === 'none') {
+      alert("Please click 'Generate Plan' first.");
+      return;
+    }
+    window.print();
+  }
+
+  // 💾 Save Plan
+  function savePlan() {
+    const data = {};
+    ['class', 'subject', 'day', 'date', 'weekNum', 'lessonTitle', 'period', 'classSize', 'duration',
+     'strand', 'subStrand', 'contentStandard', 'indicator', 'performanceIndicator', 'coreCompetencies',
+     'keywords', 'exemplars', 'tlrs', 'references', 'district'].forEach(id => {
+      data[id] = document.getElementById(id).value;
+    });
+    localStorage.setItem('klintSavedPlan', JSON.stringify(data));
+    alert("✅ Lesson plan saved!");
+  }
+
+  // 📥 Load Last Plan
+  function loadLastPlan() {
+    const saved = localStorage.getItem('klintSavedPlan');
+    if (!saved) {
+      alert("❌ No saved plan found.");
+      return;
+    }
+    const data = JSON.parse(saved);
+    Object.keys(data).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = data[id];
+    });
+    alert("✅ Last plan loaded!");
+  }
+
+  // 🧹 Clear Form
+  function clearForm() {
+    if (confirm("Clear all fields?")) {
+      document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+      document.getElementById('lessonPlanOutput').style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

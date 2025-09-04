@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: lesson-plan-backend
+    runtime: python
+    region: oregon
+    envVars:
+      - key: OPENROUTER_API_KEY
+        value: {{ OPENROUTER_API_KEY }}
+      - key: PORT
+        value: 5000
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend/app.py
+    envVarSecrets:
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+  - type: static
+    name: lesson-plan-frontend
+    buildCommand: cp frontend/index.html ./
+    publishPath: ./
+    cache:
+      paths:
+        - "node_modules/**/*"
